@@ -1,3 +1,6 @@
+# For log analysis(TIM), 2025-08-06.
+# kevin.hw.huang@fii-foxconn.com 
+
 import csv
 import glob
 import os
