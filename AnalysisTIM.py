@@ -71,6 +71,7 @@ def main():
                     row_data.append(result)
                     print(f"- {key}: {result}")
                 
+               
                 # Write the completed row to the CSV file
                 writer.writerow(row_data)
                 
