@@ -29,7 +29,7 @@ def main():
     extracts relevant data, and writes the results to a CSV file.
     """
     # Use glob to find all .txt files in directories matching the 'yyyy-mm-dd' pattern
-    log_files = glob.glob('????-??-??/*.txt')
+    log_files = glob.glob('????-??-??/??/*.txt')
     csv_output_path = 'core_error_140_analysis.csv'
     
     if not log_files:
@@ -100,4 +100,3 @@ def main():
 # Standard entry point for a Python script
 if __name__ == "__main__":
     main()
-    
