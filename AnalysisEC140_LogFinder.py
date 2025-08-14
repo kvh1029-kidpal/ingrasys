@@ -2,34 +2,32 @@ import csv
 import glob
 import os
 
-def find_all_logs(base_search_path: str) -> dict:
+def find_all_logs(search_patterns: list[str]) -> dict:
     """
-    Scans a directory structure for all .log files and maps their
+    Scans given directory structures for all .log files and maps their
     base names to their full paths for quick lookup.
 
     Args:
-        base_search_path: The root directory to start the search from (e.g., 'Z:/Bianca').
+        search_patterns: A list of glob patterns to search for log files.
 
     Returns:
         A dictionary mapping a log's base name to its full file path.
     """
-    # Construct the full glob pattern to search for .log files
-    # This will match paths like 'Z:/Bianca/2025-08-14/01/some_file.log'
-    glob_pattern = os.path.join(base_search_path, "????-??-??", "??", "*.log")
-    
-    print(f"Searching for log files using pattern: {glob_pattern}")
-    
-    # Find all files matching the pattern
-    found_files = glob.glob(glob_pattern)
+    all_found_files = []
+    print("Searching for log files using the following patterns:")
+    for pattern in search_patterns:
+        print(f"- {pattern}")
+        # Find all files matching the current pattern and add them to the master list
+        all_found_files.extend(glob.glob(pattern))
     
     log_map = {}
-    for file_path in found_files:
+    for file_path in all_found_files:
         # Get the filename without the extension (the base name)
         base_name = os.path.splitext(os.path.basename(file_path))[0]
         # Map the base name to its full path for fast lookups
         log_map[base_name] = file_path
         
-    print(f"Found {len(log_map)} unique .log files.")
+    print(f"\nFound {len(log_map)} unique .log files across all specified paths.")
     return log_map
 
 def main():
@@ -42,8 +40,8 @@ def main():
     input_csv_path = 'core_error_140_analysis.csv'
     # The new CSV file this script will generate
     output_csv_path = 'found_log_file_locations.csv'
-    # The base directory to search for the .log files
-    log_search_directory = 'Z:/Bianca'
+    # The root directory to search for the .log files
+    log_search_root = 'Z:/Bianca'
 
     # 1. Check if the input CSV from the previous step exists
     if not os.path.exists(input_csv_path):
@@ -51,13 +49,28 @@ def main():
         print("Please run the 'error_code_parser_v1' script first to generate it.")
         return
 
-    # 2. Find all available .log files in the target directory and map them
-    available_logs = find_all_logs(log_search_directory)
+    # 2. Find all 'yyyy-mm-dd' directories in the current execution folder
+    local_date_dirs = [d for d in glob.glob('????-??-??') if os.path.isdir(d)]
+
+    if not local_date_dirs:
+        print("No 'yyyy-mm-dd' formatted subdirectories found in the current folder.")
+        return
+    
+    print(f"Found local date folders to scan for: {local_date_dirs}")
+
+    # 3. Create specific search patterns based on the folders found locally
+    search_patterns = []
+    for date_dir in local_date_dirs:
+        pattern = os.path.join(log_search_root, date_dir, "??", "*.log")
+        search_patterns.append(pattern)
+
+    # 4. Find all available .log files in the target directories and map them
+    available_logs = find_all_logs(search_patterns)
     
     if not available_logs:
-        print(f"Warning: No .log files were found in the search path: {log_search_directory}")
+        print(f"Warning: No .log files were found in any of the target search paths.")
 
-    # 3. Read the input CSV and find matches
+    # 5. Read the input CSV and find matches
     results_to_write = []
     try:
         with open(input_csv_path, 'r', newline='', encoding='utf-8') as infile:
@@ -83,7 +96,7 @@ def main():
                     'Corresponding_Log_Filepath': found_log_path
                 })
         
-        # 4. Write the results to the new CSV file
+        # 6. Write the results to the new CSV file
         if not results_to_write:
             print("No filepaths were processed from the input CSV.")
             return
@@ -101,3 +114,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
