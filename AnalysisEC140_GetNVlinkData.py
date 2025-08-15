@@ -64,7 +64,7 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     log_folder_name = "EC140Logs"
     log_folder_path = os.path.join(script_dir, log_folder_name)
-    output_csv_path = os.path.join(script_dir, 'output.csv')
+    output_csv_path = os.path.join(script_dir, 'EC140_NVL_output.csv')
     all_data = []
 
     # Check if the log directory exists
