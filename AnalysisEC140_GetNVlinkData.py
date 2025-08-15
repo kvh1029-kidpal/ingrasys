@@ -25,14 +25,14 @@ def parse_log_file(file_path):
                 # Condition 1: Check for header keywords in the current line
                 if "Exit Code" in line and "Component Id" in line:
                     # Ensure we don't go out of bounds when checking the next line
-                    if i + 1 < len(lines):
-                        next_line = lines[i+1]
+                    if i + 2 < len(lines):
+                        next_line = lines[i+2]
 
                         # Condition 2: Check for the specific module code in the next line
                         if "MODS-000000000140" in next_line:
                             # Use regular expressions to find the data in the next line.
-                            # This pattern looks for GPU data followed by a comma.
-                            gpu_match = re.search(r"(GPU\S+),", next_line)
+                            # This pattern is more specific to match formats like "GPU0_..."
+                            gpu_match = re.search(r"(GPU\d+_\S+),", next_line)
                             # This pattern looks for "Nvlink" followed by space(s) and digits.
                             nvlink_match = re.search(r"Nvlink\s+(\d+)", next_line)
                             # This pattern looks for "Lane" followed by space(s) and digits.
