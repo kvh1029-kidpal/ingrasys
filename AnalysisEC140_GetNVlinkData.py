@@ -5,7 +5,7 @@ import re
 def parse_log_file(file_path):
     """
     Parses a single log file to find and extract specific data from lines
-    containing a specific module code.
+    that follow a specific header line.
 
     Args:
         file_path (str): The full path to the log file.
@@ -20,28 +20,36 @@ def parse_log_file(file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
 
-            # Iterate through each line in the file
-            for line in lines:
-                # Condition: Check for "MODS-000000000140" in the current line
-                if "MODS-000000000140" in line:
-                    # Use regular expressions to find the data in the same line.
-                    # This is more robust than splitting by spaces.
-                    gpu_match = re.search(r"GPU\s*:\s*(\S+)", line)
-                    nvlink_match = re.search(r"Nvlink\s*:\s*(\S+)", line)
-                    lane_match = re.search(r"Lane\s*:\s*(\S+)", line)
+            # Iterate through each line with its index
+            for i, line in enumerate(lines):
+                # Condition 1: Check for header keywords in the current line
+                if "Exit Code" in line and "Component Id" in line:
+                    # Ensure we don't go out of bounds when checking the next line
+                    if i + 1 < len(lines):
+                        next_line = lines[i+1]
 
-                    # Extract the matched group and remove trailing commas if they exist.
-                    gpu = gpu_match.group(1).replace(',', '') if gpu_match else "N/A"
-                    nvlink = nvlink_match.group(1).replace(',', '') if nvlink_match else "N/A"
-                    lane = lane_match.group(1).replace(',', '') if lane_match else "N/A"
+                        # Condition 2: Check for the specific module code in the next line
+                        if "MODS-000000000140" in next_line:
+                            # Use regular expressions to find the data in the next line.
+                            # This pattern looks for GPU data followed by a comma.
+                            gpu_match = re.search(r"(GPU\S+),", next_line)
+                            # This pattern looks for "Nvlink" followed by space(s) and digits.
+                            nvlink_match = re.search(r"Nvlink\s+(\d+)", next_line)
+                            # This pattern looks for "Lane" followed by space(s) and digits.
+                            lane_match = re.search(r"Lane\s+(\d+)", next_line)
 
-                    # Store the found data
-                    extracted_data.append({
-                        'log_file_name': os.path.basename(file_path),
-                        'GPU': gpu,
-                        'Nvlink': nvlink,
-                        'Lane': lane
-                    })
+                            # Extract the matched group, otherwise assign "N/A"
+                            gpu = gpu_match.group(1) if gpu_match else "N/A"
+                            nvlink = nvlink_match.group(1) if nvlink_match else "N/A"
+                            lane = lane_match.group(1) if lane_match else "N/A"
+
+                            # Store the found data
+                            extracted_data.append({
+                                'log_file_name': os.path.basename(file_path),
+                                'GPU': gpu,
+                                'Nvlink': nvlink,
+                                'Lane': lane
+                            })
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
 
@@ -96,4 +104,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
