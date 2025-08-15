@@ -4,7 +4,8 @@ import re
 
 def parse_log_file(file_path):
     """
-    Parses a single log file to find and extract specific data.
+    Parses a single log file to find and extract specific data from lines
+    containing a specific module code.
 
     Args:
         file_path (str): The full path to the log file.
@@ -19,32 +20,28 @@ def parse_log_file(file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
 
-            for i, line in enumerate(lines):
-                # Condition 1: Check for "Exit Code" and "Component Id" in the current line
-                if "Exit Code" in line and "Component Id" in line:
-                    # Ensure we don't go out of bounds
-                    if i + 1 < len(lines):
-                        next_line = lines[i+1]
+            # Iterate through each line in the file
+            for line in lines:
+                # Condition: Check for "MODS-000000000140" in the current line
+                if "MODS-000000000140" in line:
+                    # Use regular expressions to find the data in the same line.
+                    # This is more robust than splitting by spaces.
+                    gpu_match = re.search(r"GPU\s*:\s*(\S+)", line)
+                    nvlink_match = re.search(r"Nvlink\s*:\s*(\S+)", line)
+                    lane_match = re.search(r"Lane\s*:\s*(\S+)", line)
 
-                        # Condition 2: Check for "MODS-000000000140" in the next line
-                        if "MODS-000000000140" in next_line:
-                            # Use regular expressions to find the data following the keywords.
-                            # This is more robust than splitting by spaces.
-                            gpu_match = re.search(r"GPU\s*:\s*(\S+)", next_line)
-                            nvlink_match = re.search(r"Nvlink\s*:\s*(\S+)", next_line)
-                            lane_match = re.search(r"Lane\s*:\s*(\S+)", next_line)
+                    # Extract the matched group and remove trailing commas if they exist.
+                    gpu = gpu_match.group(1).replace(',', '') if gpu_match else "N/A"
+                    nvlink = nvlink_match.group(1).replace(',', '') if nvlink_match else "N/A"
+                    lane = lane_match.group(1).replace(',', '') if lane_match else "N/A"
 
-                            gpu = gpu_match.group(1) if gpu_match else "N/A"
-                            nvlink = nvlink_match.group(1) if nvlink_match else "N/A"
-                            lane = lane_match.group(1) if lane_match else "N/A"
-
-                            # Store the found data
-                            extracted_data.append({
-                                'log_file_name': os.path.basename(file_path),
-                                'GPU': gpu,
-                                'Nvlink': nvlink,
-                                'Lane': lane
-                            })
+                    # Store the found data
+                    extracted_data.append({
+                        'log_file_name': os.path.basename(file_path),
+                        'GPU': gpu,
+                        'Nvlink': nvlink,
+                        'Lane': lane
+                    })
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
 
