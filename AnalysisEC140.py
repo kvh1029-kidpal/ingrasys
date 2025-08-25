@@ -43,6 +43,7 @@ def main():
     
     # The other keys to extract if the filter matches
     keys_to_extract = [
+        "SN",
         "110-0902-000_CPU_USE_TIMES",
         "110-0902-000_CPU_LAST_RESET_TIME",
         "110-0902-000_IN_STATION_TIME"
