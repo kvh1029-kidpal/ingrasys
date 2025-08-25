@@ -1,6 +1,3 @@
-# For log analysis(TIM), 2025-08-06.
-# kevin.hw.huang@fii-foxconn.com 
-
 import csv
 import glob
 import os
@@ -71,7 +68,6 @@ def main():
                     row_data.append(result)
                     print(f"- {key}: {result}")
                 
-               
                 # Write the completed row to the CSV file
                 writer.writerow(row_data)
                 
