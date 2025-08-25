@@ -19,6 +19,25 @@ def parse_log_file(file_path):
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
+            results = {}
+
+            for i, line in enumerate(lines):
+                device_name = None
+                
+                if "FRU Device Description" in line:
+                    if "CBC_0" in line:
+                        device_name = "CBC_0"
+                    elif "CBC_1" in line:
+                        device_name = "CBC_1"
+                
+                if device_name and (i + 2) < len(lines):
+                    serial_line = lines[i + 2]
+                    if "Board Serial Number" in serial_line:
+                        serial_number = serial_line.split()[-1]
+                        results[device_name] = serial_number
+
+            cbc0 = results.get("CBC_0")
+            cbc1 = results.get("CBC_1")                
 
             # Iterate through each line with its index
             for i, line in enumerate(lines):
@@ -48,7 +67,9 @@ def parse_log_file(file_path):
                                 'log_file_name': os.path.basename(file_path),
                                 'GPU': gpu,
                                 'Nvlink': nvlink,
-                                'Lane': lane
+                                'Lane': lane,
+                                'NVL0_SN' : cbc0,
+                                'NVL1_SN' : cbc1
                             })
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
@@ -92,7 +113,7 @@ def main():
     try:
         with open(output_csv_path, 'w', newline='', encoding='utf-8') as csvfile:
             # Define the column headers for the CSV
-            fieldnames = ['log_file_name', 'GPU', 'Nvlink', 'Lane']
+            fieldnames = ['log_file_name', 'GPU', 'Nvlink', 'Lane', 'NVL0_SN', 'NVL1_SN']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()
