@@ -20,10 +20,23 @@ def parse_log_file(file_path):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
             results = {}
+            device_name = ""
 
             for i, line in enumerate(lines):
-                device_name = None
+                procmod_0 = None
                 
+                if "FRU Device Description" in line:
+                    if "ProcMod_0" in line:
+                        procmod_0 = "ProcMod_0"
+
+                if procmod_0 and (i + 2) < len(lines):
+                    serial_line = lines[i + 2]
+                    if "Board Serial Number" in serial_line:
+                        serial_number = serial_line.split()[-1]
+                        results["SN"] = serial_number
+            sn_548 = results.get("SN", "N/A")
+
+            for i, line in enumerate(lines):
                 if "FRU Device Description" in line:
                     if "CBC_0" in line:
                         device_name = "CBC_0"
@@ -64,6 +77,7 @@ def parse_log_file(file_path):
 
                             # Store the found data
                             extracted_data.append({
+                                'SN': sn_548,
                                 'log_file_name': os.path.basename(file_path),
                                 'GPU': gpu,
                                 'Nvlink': nvlink,
@@ -113,7 +127,7 @@ def main():
     try:
         with open(output_csv_path, 'w', newline='', encoding='utf-8') as csvfile:
             # Define the column headers for the CSV
-            fieldnames = ['log_file_name', 'GPU', 'Nvlink', 'Lane', 'NVL0_SN', 'NVL1_SN']
+            fieldnames = ['SN', 'log_file_name', 'GPU', 'Nvlink', 'Lane', 'NVL0_SN', 'NVL1_SN']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()
