@@ -23,13 +23,36 @@ def get_value_from_log(file_content: str, key: str) -> str:
     return "Value not found"
 
 def main():
+    # """
+    # Main function to run the script. It finds all .txt log files within any
+    # 'yyyy-mm-dd' formatted subdirectories, filters them based on a CoreErrorCode,
+    # extracts relevant data, and writes the results to a CSV file.
+    # """
+    # # Use glob to find all .txt files in directories matching the 'yyyy-mm-dd' pattern
+    # log_files = glob.glob('????-??-??/??/*.txt')
+
     """
     Main function to run the script. It finds all .txt log files within any
     'yyyy-mm-dd' formatted subdirectories, filters them based on a CoreErrorCode,
     extracts relevant data, and writes the results to a CSV file.
     """
-    # Use glob to find all .txt files in directories matching the 'yyyy-mm-dd' pattern
-    log_files = glob.glob('????-??-??/??/*.txt')
+    # Define the list of specific date folders you want to process
+    # Replace these with the actual folder names, e.g., ['2025-09-01', '2025-09-02']
+    specific_date_folders = ['2025-07-23', '2025-07-24', '2025-07-25']
+     
+    # Define the base path
+    base_path = 'Z:/MACHINE/Analysis/'
+    
+    # Use a list to store all the log file paths
+    log_files = []
+    
+    # Loop through each folder in the list and find log files
+    for folder in specific_date_folders:
+        # Construct the full glob pattern
+        glob_pattern = os.path.join(base_path, folder, '??', '*.txt')
+        # Extend the log_files list with the found files
+        log_files.extend(glob.glob(glob_pattern))    
+    
     csv_output_path = 'core_error_140_analysis.csv'
     
     if not log_files:
@@ -44,9 +67,13 @@ def main():
     # The other keys to extract if the filter matches
     keys_to_extract = [
         "SN",
-        "110-0902-000_CPU_USE_TIMES",
-        "110-0902-000_CPU_LAST_RESET_TIME",
-        "110-0902-000_IN_STATION_TIME"
+        "ProcessName",
+        "NVL0_SN",
+        "NVL1_SN",
+        "HOST_DATE_TIME",
+        "BMC_IP",
+        "DUT_IP",
+        "HOST_IP"
     ]
     
     # List to hold all the rows of data for the CSV file
