@@ -2,6 +2,12 @@ import os
 import csv
 import re
 
+LBPCB_FAIL_SN = {'1821925953098':0, '1822025953976':0, 
+                    '1822325950716':0, '1822325950442':0, 
+                    '1822625959024':0, '1822625959209':0, 
+                    '1822625957788':0, '1822325958301':0, 
+                    '1822625957789':0, '1822625958383':0}
+
 def parse_log_file(file_path):
     """
     Parses a single log file to find and extract specific data from lines
@@ -50,7 +56,19 @@ def parse_log_file(file_path):
                         results[device_name] = serial_number
 
             cbc0 = results.get("CBC_0")
-            cbc1 = results.get("CBC_1")                
+            cbc1 = results.get("CBC_1")
+
+            if cbc0 in LBPCB_FAIL_SN: 
+                LBPCB_FAIL_SN[cbc0] += 1
+                print(f"Key '{cbc0}' found and its value was incremented.")
+            else:
+                 print(f"Key '{cbc0}' not found in the dictionary.")
+
+            if cbc1 in LBPCB_FAIL_SN: 
+                LBPCB_FAIL_SN[cbc1] += 1
+                print(f"Key '{cbc1}' found and its value was incremented.")
+            else:
+                 print(f"Key '{cbc1}' not found in the dictionary.")
 
             # Iterate through each line with its index
             for i, line in enumerate(lines):
@@ -97,14 +115,15 @@ def main():
     """
     # Get the directory where the script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    log_folder_name = "EC140Logs"
-    log_folder_path = os.path.join(script_dir, log_folder_name)
+    # log_folder_name = "EC140Logs"
+    # log_folder_path = os.path.join(script_dir, log_folder_name)
+    log_folder_path = "Z:/ForHsunwen" 
     output_csv_path = os.path.join(script_dir, 'core_error_140_NVLChannel.csv')
     all_data = []
 
     # Check if the log directory exists
     if not os.path.isdir(log_folder_path):
-        print(f"Error: The directory '{log_folder_name}' was not found in the script's location.")
+        print(f"Error: The directory '{log_folder_path}' was not found in the script's location.")
         print(f"Please make sure your log files are in: {log_folder_path}")
         return
 
@@ -136,6 +155,8 @@ def main():
         print(f"\nSuccessfully parsed log files. Data written to {output_csv_path}")
     except Exception as e:
         print(f"Error writing to CSV file: {e}")
+
+    print(LBPCB_FAIL_SN)
 
 if __name__ == "__main__":
     main()
