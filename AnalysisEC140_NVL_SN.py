@@ -122,6 +122,24 @@ def get_value_from_log(file_content: str, key: str) -> str:
                 return value
     return "Value not found"
 
+def check_filename(filename: str) -> bool:
+    """
+    Checks if a filename contains either '_FCT_' or '_NVL_'.
+
+    Args:
+        filename: The name of the file (e.g., "my_file.txt").
+
+    Returns:
+        True if either substring is found, False otherwise.
+    """
+    if "_FCT_" in filename:
+        return True
+    if "_NVL_" in filename:
+        return True
+    
+    # If neither substring was found, return False
+    return False
+
 def main():
     """
     Main function to run the script. It finds all .txt log files within any
@@ -186,6 +204,10 @@ def main():
     try:
         # Process each log file found
         for file_path in final_file_list:
+            if not check_filename(file_path):
+                print(f"\nNot FCT or NVL log file: '{file_path}'")
+                continue
+
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
