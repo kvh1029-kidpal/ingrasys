@@ -153,8 +153,8 @@ def main():
     LOG_PATTERN = 'Z:/MACHINE/Analysis/????-??-??/??/*.txt'
     
     # 2. Set your desired date range
-    START_DATE = "2025-10-01"
-    END_DATE = "2025-10-30"
+    START_DATE = "2025-10-22" # "2025-10-01"
+    END_DATE = "2025-11-03" #"2025-10-30"
 
     # --- Run the function ---
     
@@ -164,9 +164,10 @@ def main():
     final_file_list = get_log_files_in_date_range(LOG_PATTERN, START_DATE, END_DATE)
     # --- Print the results ---
     if final_file_list:
-        print(f"--- Found {len(final_file_list)} matching .txt files in range ---")
-        for file_path in final_file_list:
-            print(file_path)
+        # print(f"--- Found {len(final_file_list)} matching .txt files in range ---")
+        # for file_path in final_file_list:
+        #     print(file_path)
+        pass
     else:
         print("--- No .txt files found matching the criteria. ---")
         return
@@ -225,7 +226,7 @@ def main():
                 # If it matches, extract the other specified values
                 for key in keys_to_extract:
                     value = get_value_from_log(content, key)
-                    if key == "TIME_BEGIN_RECIPE" or key == "TIME_BEGIN_RECIPE":
+                    if key == "TIME_BEGIN_RECIPE" or key == "TIME_END_RECIPE":
                         value = format_iso_datetime(value)
 
                     result_row[key] = value
