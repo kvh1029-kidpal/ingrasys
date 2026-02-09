@@ -14,6 +14,9 @@ LBPCB_FAIL_SN = {'1821925953098':0, '1822025953976':0,
                     '1822625957788':0, '1822325958301':0, 
                     '1822625957789':0, '1822625958383':0}
 
+# TO-DO: Initialize a dictionary to keep track of total LBPCB serial numbers
+TOTAL_LBPCB_SN = {}
+
 def get_log_files_in_date_range(base_pattern: str, 
                                 start_date_str: str, 
                                 end_date_str: str) -> list[str]:
@@ -210,8 +213,8 @@ def main():
     LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
     
     # 2. Set your desired date range
-    START_DATE = "2025-11-01"
-    END_DATE = "2025-11-06"
+    START_DATE = "2025-11-16" # "2025-10-10"
+    END_DATE = "2025-11-23"   # "2025-10-15"
 
     # --- Run the function ---
     
@@ -229,7 +232,7 @@ def main():
         print("--- No .log files found matching the criteria. ---")
         return
 
-    csv_output_path = 'core_error_140_nvlchannel.csv'
+    csv_output_path = 'core_error_140_nvlchannel_' + START_DATE + '_' + END_DATE + '.csv'
     all_data = []
 
     # Find all files ending with .log in the specified directory
