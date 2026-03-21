@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Code Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #f4f7f6; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background-color: #f8f9fa; }
+        .back-btn { margin-bottom: 20px; cursor: pointer; color: blue; text-decoration: underline; }
+        .rack-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+        .slot { border: 1px solid #333; padding: 10px; text-align: center; background: #eee; }
+        .highlight { background: #ffcccb; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="page1" class="container">
+    <h2>Error Code Overview</h2>
+    <p>Click a slice to view Serial Numbers and Rack Distribution.</p>
+    <canvas id="errorChart"></canvas>
+</div>
+
+<div id="page2" class="container hidden">
+    <div class="back-btn" onclick="showPage(1)">← Back to Overview</div>
+    <h2 id="detailTitle">Error Details</h2>
+    
+    ### 1.1 Serial Numbers (SN)
+    <table id="snTable">
+        <thead><tr><th>Serial Number</th></tr></thead>
+        <tbody></tbody>
+    </table>
+
+    ### 1.2 Rack Slot Distribution (16 Slots)
+    <div class="rack-grid" id="rackGrid"></div>
+</div>
+
+<script>
+    // Mock Data for 10 Error Codes
+    const errorData = {
+        'ERR_001': { count: 15, sns: ['SN-A101', 'SN-A102'], slots: {1: 5, 5: 10} },
+        'ERR_002': { count: 25, sns: ['SN-B201', 'SN-B205'], slots: {2: 12, 16: 13} },
+        'ERR_003': { count: 10, sns: ['SN-C301'], slots: {8: 10} },
+        // ... add more as needed
+    };
+
+    // Initialize Chart
+    const ctx = document.getElementById('errorChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(errorData),
+            datasets: [{
+                data: Object.values(errorData).map(d => d.count),
+                backgroundColor: ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56', '#4bc0c0', '#f77c05', '#9966ff', '#c9cbcf', '#3cba9f', '#003f5c']
+            }]
+        },
+        options: {
+            onClick: (evt, item) => {
+                if (item.length > 0) {
+                    const index = item[0].index;
+                    const errorCode = chart.data.labels[index];
+                    renderDetails(errorCode);
+                }
+            }
+        }
+    });
+
+    function renderDetails(code) {
+        const data = errorData[code] || { sns: [], slots: {} };
+        document.getElementById('detailTitle').innerText = `Details for ${code}`;
+        
+        // Fill SN Table
+        const tbody = document.querySelector('#snTable tbody');
+        tbody.innerHTML = data.sns.map(sn => `<tr><td>${sn}</td></tr>`).join('');
+
+        // Fill Rack Grid
+        const grid = document.getElementById('rackGrid');
+        grid.innerHTML = '';
+        for (let i = 1; i <= 16; i++) {
+            const count = data.slots[i] || 0;
+            const highlight = count > 0 ? 'highlight' : '';
+            grid.innerHTML += `<div class="slot ${highlight}">Slot ${i}<br>Count: ${count}</div>`;
+        }
+
+        showPage(2);
+    }
+
+    function showPage(num) {
+        document.getElementById('page1').classList.toggle('hidden', num !== 1);
+        document.getElementById('page2').classList.toggle('hidden', num !== 2);
+    }
+</script>
+</body>
+</html>

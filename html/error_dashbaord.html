@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Rack Diagnostic Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: #f0f2f5; color: #333; }
+        header { background: #1a2a6c; color: white; padding: 1.2rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 95%; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+        
+        .back-btn { cursor: pointer; color: #007bff; font-weight: bold; margin-bottom: 20px; display: inline-block; }
+        .pod-tabs { display: flex; gap: 8px; margin-bottom: 25px; border-bottom: 2px solid #e9ecef; overflow-x: auto; padding-bottom: 8px; }
+        .pod-tab { padding: 10px 24px; cursor: pointer; background: #f1f3f5; border-radius: 6px; font-weight: 600; white-space: nowrap; transition: 0.3s; }
+        .pod-tab.active { background: #007bff; color: white; box-shadow: 0 2px 5px rgba(0,123,255,0.4); }
+
+        /* Matrix Styling */
+        .matrix-wrapper { overflow-x: auto; border: 1px solid #dee2e6; border-radius: 8px; margin-top: 15px; position: relative; }
+        table.matrix-table { border-collapse: collapse; table-layout: fixed; min-width: 2600px; }
+        .matrix-table th, .matrix-table td { border: 1px solid #e9ecef; width: 42px; height: 38px; text-align: center; font-size: 0.7rem; position: relative; }
+        .matrix-table th { background: #f8f9fa; color: #6c757d; font-weight: bold; position: sticky; top: 0; z-index: 1; }
+        .slot-label { background: #f8f9fa !important; width: 100px !important; text-align: left !important; padding-left: 10px; font-weight: bold; position: sticky; left: 0; z-index: 3; border-right: 2px solid #dee2e6 !important; }
+
+        /* Heatmap & Tooltip Logic */
+        .cell-fail { background-color: #ff4d4d; color: white; font-weight: bold; cursor: help; transition: transform 0.1s; }
+        .cell-fail:hover { transform: scale(1.1); z-index: 10; background-color: #d63031; }
+        .cell-ok { background-color: #ffffff; color: #eee; }
+
+        /* Custom Tooltip */
+        .cell-fail::after {
+            content: attr(data-sns);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3436;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            width: 180px;
+            font-size: 0.7rem;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+        .cell-fail:hover::after { display: block; }
+
+        /* SN Matrix Grid */
+        .sn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 300px; overflow-y: auto; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
+        .sn-item { background: white; border: 1px solid #ddd; padding: 6px; border-radius: 4px; font-size: 0.8rem; text-align: center; font-family: 'Courier New', monospace; }
+        
+        .section-title { color: #1a2a6c; border-left: 5px solid #007bff; padding-left: 10px; margin-top: 2rem; font-size: 1.2rem; }
+        .chart-box { max-width: 500px; margin: 30px auto; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Enterprise POD Diagnostic Dashboard</h1>
+</header>
+
+<div id="overviewPage" class="container">
+    <h2>Top 10 Error Overview</h2>
+    <div class="chart-box">
+        <canvas id="errorPieChart"></canvas>
+    </div>
+    <p style="text-align: center; color: #666;">Click a slice to drill down into POD-Rack-Slot localization.</p>
+</div>
+
+<div id="detailsPage" class="container hidden">
+    <div class="back-btn" onclick="showPage('overviewPage')">← Back to Overview</div>
+    <h2 id="errTitle">Error Analysis</h2>
+
+    <div class="pod-tabs" id="podTabs"></div>
+
+    <h3 class="section-title">1.1 Serial Number Summary (Selected POD)</h3>
+    <div class="sn-grid" id="snGrid"></div>
+
+    <h3 class="section-title">1.2 Physical Layout Matrix (60 Racks x 16 Slots)</h3>
+    <div class="matrix-wrapper">
+        <table class="matrix-table" id="rackMatrix">
+            </table>
+    </div>
+    <p style="font-size: 0.85rem; color: #666; margin-top: 12px;">
+        💡 <b>Tip:</b> Hover over <span style="color:#d63031; font-weight:bold;">RED</span> cells to see the Serial Numbers located in that specific slot.
+    </p>
+</div>
+
+<script>
+    const TOTAL_RACKS = 60;
+    const MASTER_DATA = {"E028163006_082-000-1-000000000140": {"POD4": {"sns": ["1650826065382", "1651226001423", "1651026061009", "1651026061247", "1651126004240", "1651126006208"], "matrix": {"R12": {"T10R": ["1650826065382"], "T7L": ["1651126006208"], "T7R": ["1651126004240"]}, "R15": {"T8R": ["1651026061009"], "T9R": ["1651026061247"]}, "R32": {"T3L": ["1651226001423"]}}}, "POD2": {"sns": ["1651226000549", "1651226003879", "1651126087615", "1651126088451"], "matrix": {"R14": {"T7L": ["1651126087615"]}, "R16": {"T2L": ["1651126088451"]}, "R36": {"T5L": ["1651226000549"]}, "R39": {"T2R": ["1651226003879"]}}}, "POD3": {"sns": ["1651226002377", "1651226022683", "1651226023363"], "matrix": {"R13": {"T10L": ["1651226002377"]}, "R47": {"T6R": ["1651226023363"]}, "R50": {"T4L": ["1651226022683"]}}}}};
+
+    let activeError = "";
+
+    // 1. Chart Logic
+    const ctx = document.getElementById('errorPieChart').getContext('2d');
+    const codes = Object.keys(MASTER_DATA);
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: codes,
+            datasets: [{
+                data: codes.map(c => {
+                    let count = 0;
+                    Object.values(MASTER_DATA[c]).forEach(p => count += p.sns.length);
+                    return count;
+                }),
+                backgroundColor: ['#0984e3', '#00b894', '#d63031', '#f1c40f', '#8e44ad']
+            }]
+        },
+        options: {
+            onClick: (e, items) => {
+                if (items.length > 0) {
+                    activeError = codes[items[0].index];
+                    renderDetails(activeError);
+                }
+            }
+        }
+    });
+
+    // 2. Details Setup
+    function renderDetails(errCode) {
+        document.getElementById('errTitle').innerText = `Error: ${errCode}`;
+        const pods = Object.keys(MASTER_DATA[errCode]);
+        const tabEl = document.getElementById('podTabs');
+        tabEl.innerHTML = pods.map((p, i) => `<div class="pod-tab ${i===0?'active':''}" onclick="switchPod('${p}', this)">${p}</div>`).join('');
+        loadPodData(errCode, pods[0]);
+        showPage('detailsPage');
+    }
+
+    function switchPod(podName, btn) {
+        document.querySelectorAll('.pod-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        loadPodData(activeError, podName);
+    }
+
+    // 3. Matrix Rendering
+    function loadPodData(errCode, podName) {
+        const data = MASTER_DATA[errCode][podName];
+        document.getElementById('snGrid').innerHTML = data.sns.map(s => `<div class="sn-item">${s}</div>`).join('');
+
+        const matrixEl = document.getElementById('rackMatrix');
+        let html = `<thead><tr><th class="slot-label">Slot \\ Rack</th>`;
+        for (let r = 1; r <= TOTAL_RACKS; r++) { html += `<th>R${r}</th>`; }
+        html += `</tr></thead><tbody>`;
+
+        const genericSlots = ["T1L", "T1R", "T2L", "T2R", "T3L", "T3R", "T4L", "T4R", "T5L", "T5R", "T6L", "T6R", "T7L", "T7R", "T8L", "T8R", "T9L", "T9R", "T10L", "T10R"];
+
+        genericSlots.forEach(slotID => {
+            html += `<tr><td class="slot-label">${slotID}</td>`;
+            for (let r = 1; r <= TOTAL_RACKS; r++) {
+                const rackID = `R${r}`;
+                const snList = (data.matrix[rackID] && data.matrix[rackID][slotID]) ? data.matrix[rackID][slotID] : [];
+                const count = snList.length;
+                const css = count > 0 ? 'cell-fail' : 'cell-ok';
+                const snsAttr = count > 0 ? `data-sns="SNs in ${rackID}-${slotID}:\n${snList.join('\n')}"` : '';
+                
+                html += `<td class="${css}" ${snsAttr}>${count > 0 ? count : ''}</td>`;
+            }
+            html += `</tr>`;
+        });
+        matrixEl.innerHTML = html + `</tbody>`;
+    }
+
+    function showPage(id) {
+        document.getElementById('overviewPage').classList.toggle('hidden', id !== 'overviewPage');
+        document.getElementById('detailsPage').classList.toggle('hidden', id !== 'detailsPage');
+    }
+</script>
+</body>
+</html>

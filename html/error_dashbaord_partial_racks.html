@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POD/Rack Diagnostic Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background: #f4f7f9; color: #2d3436; line-height: 1.6; }
+        header { background: #2c3e50; color: #ecf0f1; padding: 1.5rem; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .container { max-width: 1400px; margin: 2rem auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+        
+        /* Navigation & Tabs */
+        .back-btn { cursor: pointer; color: #3498db; font-weight: 600; margin-bottom: 20px; display: inline-flex; align-items: center; }
+        .back-btn:hover { text-decoration: underline; }
+        .pod-tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; }
+        .pod-tab { padding: 8px 16px; cursor: pointer; background: #dfe6e9; border-radius: 6px; font-weight: bold; font-size: 0.9rem; color: #636e72; transition: 0.2s; }
+        .pod-tab.active { background: #3498db; color: white; }
+
+        /* Multi-column Layout */
+        .details-grid { display: grid; grid-template-columns: 320px 1fr; gap: 2rem; }
+        @media (max-width: 900px) { .details-grid { grid-template-columns: 1fr; } }
+        
+        /* Table and Matrix Styling */
+        .matrix-wrapper { overflow-x: auto; background: white; border: 1px solid #dfe6e9; border-radius: 8px; }
+        table.matrix-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .matrix-table th, .matrix-table td { border: 1px solid #ecf0f1; padding: 12px; text-align: center; font-size: 0.85rem; }
+        .matrix-table th { background: #f8f9fa; color: #7f8c8d; }
+        .slot-header { background: #f8f9fa !important; font-weight: bold; width: 100px; text-align: left !important; position: sticky; left: 0; z-index: 1; }
+
+        /* Cell Visuals */
+        .cell-fail { background-color: #ff7675; color: white; font-weight: bold; border: 2px solid #d63031 !important; }
+        .cell-ok { color: #b2bec3; }
+
+        /* SN Table */
+        .sn-box { border: 1px solid #ecf0f1; border-radius: 8px; max-height: 500px; overflow-y: auto; }
+        .sn-table { width: 100%; border-collapse: collapse; }
+        .sn-table td { padding: 10px; border-bottom: 1px solid #f1f2f6; font-family: 'Consolas', monospace; font-size: 0.9rem; }
+        
+        .chart-box { max-width: 500px; margin: 2rem auto; }
+        h2 { border-bottom: 2px solid #3498db; padding-bottom: 8px; display: inline-block; }
+        h3 { font-size: 1.1rem; color: #2c3e50; margin-top: 0; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Infrastructure Error Diagnostic Dashboard</h1>
+</header>
+
+<div id="overviewPage" class="container">
+    <h2>10 Error Code Overview</h2>
+    <p>Select a slice of the pie chart to drill down into the physical POD/Rack locations and Serial Numbers.</p>
+    <div class="chart-box">
+        <canvas id="errorPieChart"></canvas>
+    </div>
+</div>
+
+<div id="detailsPage" class="container hidden">
+    <div class="back-btn" onclick="showPage('overviewPage')">← Back to Overview</div>
+    <h2 id="errorCodeHeader">Error Details</h2>
+
+    <div class="pod-tabs" id="podTabs">
+        </div>
+
+    <div class="details-grid">
+        <div>
+            <h3>1.1 Serial Numbers (SN)</h3>
+            <div class="sn-box">
+                <table class="sn-table">
+                    <tbody id="snBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div>
+            <h3>1.2 Rack Matrix (Columns: Rack | Rows: Slot)</h3>
+            <div class="matrix-wrapper">
+                <table class="matrix-table" id="rackMatrix">
+                    </table>
+            </div>
+            <p style="font-size: 0.8rem; color: #95a5a6; margin-top: 15px;">
+                * Red cells indicate error occurrence at that physical (Rack, Slot) location.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* DATA STRUCTURE:
+       This is populated based on your CSV structure (FXHC-POD-RACK-SLOT).
+    */
+    const ALL_SLOTS = ["T2L", "T2R", "T3L", "T4L", "T5L", "T6R", "T7L", "T7R", "T8R", "T9R", "T10L", "T10R"];
+    const MASTER_DATA = {
+        "E028163006_082-000-1-000000000140": {
+            "POD4": {
+                "sns": ["1650826065382", "1651226001423", "1651026061009", "1651026061247", "1651126004240", "1651126006208"], 
+                "racks": ["R12", "R15", "R32"], 
+                "matrix": {"R12": {"T10R": 1, "T7L": 1, "T7R": 1}, "R15": {"T8R": 1, "T9R": 1}, "R32": {"T3L": 1}}
+            }, 
+            "POD2": {
+                "sns": ["1651226000549", "1651226003879", "1651126087615", "1651126088451"], 
+                "racks": ["R14", "R16", "R36", "R39"], 
+                "matrix": {"R14": {"T7L": 1}, "R16": {"T2L": 1}, "R36": {"T5L": 1}, "R39": {"T2R": 1}}
+            }, 
+            "POD3": {
+                "sns": ["1651226002377", "1651226022683", "1651226023363"], 
+                "racks": ["R13", "R47", "R50"], 
+                "matrix": {"R13": {"T10L": 1}, "R47": {"T6R": 1}, "R50": {"T4L": 1}}
+            }
+        }
+        // Add more error codes here
+    };
+
+    let selectedError = "";
+
+    // 1. CHART INITIALIZATION
+    const ctx = document.getElementById('errorPieChart').getContext('2d');
+    const codes = Object.keys(MASTER_DATA);
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: codes,
+            datasets: [{
+                data: codes.map(c => {
+                    let sum = 0;
+                    Object.values(MASTER_DATA[c]).forEach(p => sum += p.sns.length);
+                    return sum;
+                }),
+                backgroundColor: ['#3498db', '#e67e22', '#2ecc71', '#9b59b6', '#e74c3c', '#1abc9c']
+            }]
+        },
+        options: {
+            onClick: (evt, items) => {
+                if (items.length > 0) {
+                    selectedError = codes[items[0].index];
+                    loadDetails(selectedError);
+                }
+            }
+        }
+    });
+
+    // 2. LOAD DETAILS (Tabs and initial POD)
+    function loadDetails(errCode) {
+        document.getElementById('errorCodeHeader').innerText = `Error: ${errCode}`;
+        const pods = Object.keys(MASTER_DATA[errCode]);
+        
+        // Generate Tabs
+        const tabEl = document.getElementById('podTabs');
+        tabEl.innerHTML = pods.map((pod, i) => 
+            `<div class="pod-tab ${i===0?'active':''}" onclick="updatePodView('${pod}', this)">${pod}</div>`
+        ).join('');
+
+        // Load first POD data
+        renderPodData(errCode, pods[0]);
+        showPage('detailsPage');
+    }
+
+    // 3. TAB SWITCHING
+    function updatePodView(podName, tabEl) {
+        document.querySelectorAll('.pod-tab').forEach(t => t.classList.remove('active'));
+        tabEl.classList.add('active');
+        renderPodData(selectedError, podName);
+    }
+
+    // 4. RENDER SN LIST AND RACK MATRIX
+    function renderPodData(errCode, podName) {
+        const podData = MASTER_DATA[errCode][podName];
+        
+        // 4.1 Update SN Table
+        document.getElementById('snBody').innerHTML = podData.sns.map(s => `<tr><td>${s}</td></tr>`).join('');
+
+        // 4.2 Update Rack Matrix
+        const matrixTable = document.getElementById('rackMatrix');
+        const racks = podData.racks;
+        
+        // Header (Racks)
+        let html = `<thead><tr><th class="slot-header">Slot \\ Rack</th>`;
+        racks.forEach(r => html += `<th>${r}</th>`);
+        html += `</tr></thead><tbody>`;
+
+        // Rows (Slots)
+        ALL_SLOTS.forEach(slot => {
+            html += `<tr><td class="slot-header">${slot}</td>`;
+            racks.forEach(rack => {
+                const count = (podData.matrix[rack] && podData.matrix[rack][slot]) ? podData.matrix[rack][slot] : 0;
+                const cellClass = count > 0 ? 'cell-fail' : 'cell-ok';
+                html += `<td class="${cellClass}">${count > 0 ? count : '-'}</td>`;
+            });
+            html += `</tr>`;
+        });
+        html += `</tbody>`;
+        matrixTable.innerHTML = html;
+    }
+
+    function showPage(id) {
+        document.getElementById('overviewPage').classList.toggle('hidden', id !== 'overviewPage');
+        document.getElementById('detailsPage').classList.toggle('hidden', id !== 'detailsPage');
+        window.scrollTo(0,0);
+    }
+</script>
+
+</body>
+</html>
