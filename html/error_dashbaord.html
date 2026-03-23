@@ -13,8 +13,9 @@
         
         .back-btn { cursor: pointer; color: #007bff; font-weight: bold; margin-bottom: 20px; display: inline-block; }
         .pod-tabs { display: flex; gap: 8px; margin-bottom: 25px; border-bottom: 2px solid #e9ecef; overflow-x: auto; padding-bottom: 8px; }
-        .pod-tab { padding: 10px 24px; cursor: pointer; background: #f1f3f5; border-radius: 6px; font-weight: 600; white-space: nowrap; transition: 0.3s; }
-        .pod-tab.active { background: #007bff; color: white; box-shadow: 0 2px 5px rgba(0,123,255,0.4); }
+        .pod-tab { padding: 10px 20px; cursor: pointer; background: #f1f3f5; border-radius: 6px; font-weight: 600; white-space: nowrap; transition: 0.3s; display: flex; flex-direction: column; align-items: center; border: 1px solid transparent; }
+        .pod-tab.active { background: #007bff; color: white; box-shadow: 0 2px 5px rgba(0,123,255,0.4); border-color: #0056b3; }
+        .pod-percent { font-size: 0.75rem; font-weight: normal; opacity: 0.9; }
 
         /* Matrix Styling */
         .matrix-wrapper { overflow-x: auto; border: 1px solid #dee2e6; border-radius: 8px; margin-top: 15px; position: relative; }
@@ -24,11 +25,11 @@
         .slot-label { background: #f8f9fa !important; width: 100px !important; text-align: left !important; padding-left: 10px; font-weight: bold; position: sticky; left: 0; z-index: 3; border-right: 2px solid #dee2e6 !important; }
 
         /* Heatmap & Tooltip Logic */
-        .cell-fail { background-color: #ff4d4d; color: white; font-weight: bold; cursor: help; transition: transform 0.1s; }
-        .cell-fail:hover { transform: scale(1.1); z-index: 10; background-color: #d63031; }
+        .cell-fail { background-color: #ff4d4d; color: white; font-weight: bold; cursor: help; }
+        .cell-fail:hover { background-color: #d63031; z-index: 10; transform: scale(1.05); transition: 0.1s; }
         .cell-ok { background-color: #ffffff; color: #eee; }
 
-        /* Custom Tooltip */
+        /* Tooltip style */
         .cell-fail::after {
             content: attr(data-sns);
             position: absolute;
@@ -40,12 +41,13 @@
             padding: 8px;
             border-radius: 4px;
             white-space: pre-wrap;
-            width: 180px;
+            width: 200px;
             font-size: 0.7rem;
             display: none;
             z-index: 100;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             pointer-events: none;
+            line-height: 1.2;
         }
         .cell-fail:hover::after { display: block; }
 
@@ -64,15 +66,15 @@
 <body>
 
 <header>
-    <h1>Enterprise POD Diagnostic Dashboard</h1>
+    <h1>Enterprise Diagnostic Dashboard</h1>
 </header>
 
 <div id="overviewPage" class="container">
-    <h2>Top 10 Error Overview</h2>
+    <h2>Error Frequency Overview</h2>
     <div class="chart-box">
         <canvas id="errorPieChart"></canvas>
     </div>
-    <p style="text-align: center; color: #666;">Click a slice to drill down into POD-Rack-Slot localization.</p>
+    <p style="text-align: center; color: #666;">Select an error code slice to see detailed POD-Rack-Slot heatmaps.</p>
 </div>
 
 <div id="detailsPage" class="container hidden">
@@ -87,24 +89,24 @@
     </div>
     <div class="sn-grid" id="snGrid" style="margin-top: 15px;"></div>
 
-    <h3 class="section-title" style="margin-top: 2rem;">1.2 Physical Layout Matrix (60 Racks x 16+ Slots)</h3>
+    <h3 class="section-title" style="margin-top: 2rem;">1.2 Physical Layout Heatmap (60 Racks x 20 Slots)</h3>
     <div class="matrix-wrapper">
-        <table class="matrix-table" id="rackMatrix">
-            </table>
+        <table class="matrix-table" id="rackMatrix"></table>
     </div>
     <p style="font-size: 0.85rem; color: #666; margin-top: 12px;">
-        💡 <b>Tip:</b> Hover over <span style="color:#d63031; font-weight:bold;">RED</span> cells to see the Serial Numbers in that slot.
+        💡 <b>Tip:</b> Hover over <span style="color:#d63031; font-weight:bold;">RED</span> cells to view specific SNs at that coordinate.
     </p>
 </div>
 
 <script>
     const TOTAL_RACKS = 60;
-    const MASTER_DATA = {"E028163006_082-000-1-000000000140": {"POD4": {"sns": ["1650826065382", "1651226001423", "1651026061009", "1651026061247", "1651126004240", "1651126006208"], "matrix": {"R12": {"T10R": ["1650826065382"], "T7L": ["1651126006208"], "T7R": ["1651126004240"]}, "R15": {"T8R": ["1651026061009"], "T9R": ["1651026061247"]}, "R32": {"T3L": ["1651226001423"]}}}, "POD2": {"sns": ["1651226000549", "1651226003879", "1651126087615", "1651126088451"], "matrix": {"R14": {"T7L": ["1651126087615"]}, "R16": {"T2L": ["1651126088451"]}, "R36": {"T5L": ["1651226000549"]}, "R39": {"T2R": ["1651226003879"]}}}, "POD3": {"sns": ["1651226002377", "1651226022683", "1651226023363"], "matrix": {"R13": {"T10L": ["1651226002377"]}, "R47": {"T6R": ["1651226023363"]}, "R50": {"T4L": ["1651226022683"]}}}}};
+    // Data generated from current CSV logs
+    const MASTER_DATA = {"E028163006_082-000-1-000000000140": {"POD4": {"sns": ["1650826065382", "1651226001423", "1651026061009", "1651026061247", "1651126004240", "1651126006208"], "matrix": {"R12": {"T10R": ["1650826065382"], "T7L": ["1651126006208"], "T7R": ["1651126004240"]}, "R15": {"T8R": ["1651026061009"], "T9R": ["1651026061247"]}, "R32": {"T3L": ["1651226001423"]}}, "percentage": 46.15}, "POD2": {"sns": ["1651226000549", "1651226003879", "1651126087615", "1651126088451"], "matrix": {"R14": {"T7L": ["1651126087615"]}, "R16": {"T2L": ["1651126088451"]}, "R36": {"T5L": ["1651226000549"]}, "R39": {"T2R": ["1651226003879"]}}, "percentage": 30.77}, "POD3": {"sns": ["1651226002377", "1651226022683", "1651226023363"], "matrix": {"R13": {"T10L": ["1651226002377"]}, "R47": {"T6R": ["1651226023363"]}, "R50": {"T4L": ["1651226022683"]}}, "percentage": 23.08}}};
 
     let activeError = "";
     let activePod = "";
 
-    // 1. Chart Initialization
+    // 1. Chart Logic
     const ctx = document.getElementById('errorPieChart').getContext('2d');
     const codes = Object.keys(MASTER_DATA);
     new Chart(ctx, {
@@ -113,11 +115,11 @@
             labels: codes,
             datasets: [{
                 data: codes.map(c => {
-                    let count = 0;
-                    Object.values(MASTER_DATA[c]).forEach(p => count += p.sns.length);
-                    return count;
+                    let sum = 0;
+                    Object.values(MASTER_DATA[c]).forEach(p => sum += p.sns.length);
+                    return sum;
                 }),
-                backgroundColor: ['#0984e3', '#00b894', '#d63031', '#f1c40f', '#8e44ad']
+                backgroundColor: ['#0984e3', '#00b894', '#d63031', '#f1c40f', '#8e44ad', '#fd79a8']
             }]
         },
         options: {
@@ -130,12 +132,22 @@
         }
     });
 
-    // 2. Render Page for Specific Error
+    // 2. Navigation Logic
     function renderDetails(errCode) {
         document.getElementById('errTitle').innerText = `Error: ${errCode}`;
         const pods = Object.keys(MASTER_DATA[errCode]);
         const tabEl = document.getElementById('podTabs');
-        tabEl.innerHTML = pods.map((p, i) => `<div class="pod-tab ${i===0?'active':''}" onclick="switchPod('${p}', this)">${p}</div>`).join('');
+        
+        // Build Tabs with Percentage values
+        tabEl.innerHTML = pods.map((p, i) => {
+            const perc = MASTER_DATA[errCode][p].percentage;
+            return `
+                <div class="pod-tab ${i===0?'active':''}" onclick="switchPod('${p}', this)">
+                    <span>${p}</span>
+                    <span class="pod-percent">${perc}% of Total</span>
+                </div>`;
+        }).join('');
+
         loadPodData(errCode, pods[0]);
         showPage('detailsPage');
     }
@@ -146,7 +158,7 @@
         loadPodData(activeError, podName);
     }
 
-    // 3. Load SN Grid and 60x16 Matrix
+    // 3. Matrix & SN Grid Rendering
     function loadPodData(errCode, podName) {
         activePod = podName;
         const data = MASTER_DATA[errCode][podName];
@@ -157,7 +169,6 @@
         for (let r = 1; r <= TOTAL_RACKS; r++) { html += `<th>R${r}</th>`; }
         html += `</tr></thead><tbody>`;
 
-        // Using standard naming from your CSV samples
         const genericSlots = ["T1L", "T1R", "T2L", "T2R", "T3L", "T3R", "T4L", "T4R", "T5L", "T5R", "T6L", "T6R", "T7L", "T7R", "T8L", "T8R", "T9L", "T9R", "T10L", "T10R"];
 
         genericSlots.forEach(slotID => {
@@ -167,7 +178,7 @@
                 const snList = (data.matrix[rackID] && data.matrix[rackID][slotID]) ? data.matrix[rackID][slotID] : [];
                 const count = snList.length;
                 const css = count > 0 ? 'cell-fail' : 'cell-ok';
-                const snsAttr = count > 0 ? `data-sns="Location: ${rackID}-${slotID}\nTotal: ${count}\nSNs:\n${snList.join('\n')}"` : '';
+                const snsAttr = count > 0 ? `data-sns="Location: ${rackID}-${slotID}\nOccurrences: ${count}\nSNs:\n${snList.join('\n')}"` : '';
                 
                 html += `<td class="${css}" ${snsAttr}>${count > 0 ? count : ''}</td>`;
             }
@@ -176,12 +187,11 @@
         matrixEl.innerHTML = html + `</tbody>`;
     }
 
-    // 4. CSV Export Function
+    // 4. Export CSV
     function downloadCSV() {
         const data = MASTER_DATA[activeError][activePod];
         let csvContent = "data:text/csv;charset=utf-8,Serial Number,POD,Rack,Slot\n";
         
-        // Loop through the matrix to find all SNs and their positions
         Object.keys(data.matrix).forEach(rack => {
             Object.keys(data.matrix[rack]).forEach(slot => {
                 data.matrix[rack][slot].forEach(sn => {
@@ -193,7 +203,7 @@
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `Error_${activeError}_${activePod}.csv`);
+        link.setAttribute("download", `Data_${activeError}_${activePod}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -202,6 +212,7 @@
     function showPage(id) {
         document.getElementById('overviewPage').classList.toggle('hidden', id !== 'overviewPage');
         document.getElementById('detailsPage').classList.toggle('hidden', id !== 'detailsPage');
+        window.scrollTo(0,0);
     }
 </script>
 </body>
