@@ -251,53 +251,27 @@ def parse_log_file(file_path):
             # else:
             #      print(f"Key '{cbc1}' not found in the dictionary.")
 
-            # Iterate through each line with its index
-            for i, line in enumerate(lines):
-                # Condition 1: Check for header keywords in the current line
-                if "Exit Code" in line and "Component Id" in line:
-                    # Ensure we don't go out of bounds when checking the next line
-                    if i + 2 < len(lines):
-                        next_line = lines[i+2]
-
-                        # Condition 2: Check for the specific module code in the next line
-                        if "MODS-000000000140" in next_line:
-                            # Use regular expressions to find the data in the next line.
-                            # This pattern is more specific to match formats like "GPU0_..."
-                            if "_FCT_" in file_path: # GPU0_0008:06:00.0
-                                gpu_match = re.search(r"(GPU\d+_\S+),", next_line)
-
-                            if "_NVL_" in file_path: # GPU 1 [0009:06:00.0]
-                                gpu_match = re.search(r"(GPU \d+ \[\S+),", next_line)
-
-                            # This pattern looks for "Nvlink" followed by space(s) and digits.
-                            nvlink_match = re.search(r"Nvlink\s+(\d+)", next_line)
-                            # This pattern looks for "Lane" followed by space(s) and digits.
-                            lane_match = re.search(r"Lane\s+(\d+)", next_line)
-
-                            # Extract the matched group, otherwise assign "N/A"
-                            gpu = gpu_match.group(1) if gpu_match else "N/A"
-                            nvlink = nvlink_match.group(1) if nvlink_match else "N/A"
-                            lane = lane_match.group(1) if lane_match else "N/A"
-                
-                            # Store the found data
-                            extracted_data.append({
-                                'SN': board_sn,
-                                'Tray_SN': tray_sn,
-                                'POD_Rack_Slot': flat_id,
-                                'FOX_Routing': fox_routing,
-                                'Error_Code': error_code,
-                                'GPU': gpu,
-                                'Nvlink': nvlink,
-                                'Lane': lane,
-                                'NVL0_SN' : cbc0,
-                                'NVL1_SN' : cbc1,
-                                'PN' : product_pn,
-                                'Diag' : diag_version,
-                                'StartTestTime': start_test_time,
-                                'EndTestTime': end_test_time,
-                                'log_file_name': os.path.basename(file_path)
-                            })
-                            print(extracted_data)
+        # if error_code == 'E108003006_023-049-0-000000000008':
+        if error_code == 'E028163006_000-001-1-0-008-00-546-284':
+            # Store the found data
+            extracted_data.append({
+                'SN': board_sn,
+                'Tray_SN': tray_sn,
+                'POD_Rack_Slot': flat_id,
+                'FOX_Routing': fox_routing,
+                'Error_Code': error_code,
+                'GPU': None,
+                'Nvlink': None,
+                'Lane': None,
+                'NVL0_SN' : cbc0,
+                'NVL1_SN' : cbc1,
+                'PN' : product_pn,
+                'Diag' : diag_version,
+                'StartTestTime': start_test_time,
+                'EndTestTime': end_test_time,
+                'log_file_name': os.path.basename(file_path)
+            })
+            print(extracted_data)
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
 
@@ -315,8 +289,10 @@ def check_filename(filename: str) -> bool:
     """
     if "_FCT_" in filename:
         return True
-    if "_NVL_" in filename:
-        return True
+    # if "_NVL_" in filename:
+    #     return True
+    # if "_IST_" in filename:
+    #    return True
     
     # If neither substring was found, return False
     return False
@@ -332,13 +308,13 @@ def main():
     # 1. This is your original glob pattern
     #    Note: Use forward slashes '/'.
     # LOG_PATTERN = 'Z:/Bianca/GDL_20260214_0317_Log/Mar_logs_archive/????-??-??/??/*.log'
-    LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
-    # LOG_PATTERN = 'D:/TestLogs/????-??-??/??/*.log'
+    # LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
+    LOG_PATTERN = 'D:/TestLogs/????-??-??/??/*.log'
     # LOG_PATTERN = 'C:/Users/kvh10/Downloads/OneDrive_1_2026-3-17/2026-03-16_23_FCT_logs/????-??-??/??/*.log'
     
     # 2. Set your desired date range
-    START_DATE = "2026-03-20" # "2026-01-21" # "2025-10-10"
-    END_DATE   = "2026-03-20" # "2026-02-01" # "2025-10-15"
+    START_DATE = "2026-03-21" # "2026-01-21" # "2025-10-10"
+    END_DATE   = "2026-03-21" # "2026-02-01" # "2025-10-15"
 
     # --- Run the function ---
     
@@ -356,7 +332,7 @@ def main():
         print("--- No .log files found matching the criteria. ---")
         return
 
-    csv_output_path = 'EC140_' + START_DATE + '_' + END_DATE + '.csv'
+    csv_output_path = 'EC008_' + START_DATE + '_' + END_DATE + '_EC284.csv'
     all_data = []
 
     # Find all files ending with .log in the specified directory

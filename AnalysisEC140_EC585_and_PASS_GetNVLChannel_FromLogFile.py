@@ -8,71 +8,14 @@ import sys
 from pathlib import Path
 from datetime import datetime, date
 
-# LBPCB_FAIL_SN = {'1821925953098':0, '1822025953976':0, 
-#                     '1822325950716':0, '1822325950442':0, 
-#                     '1822625959024':0, '1822625959209':0, 
-#                     '1822625957788':0, '1822325958301':0, 
-#                     '1822625957789':0, '1822625958383':0}
-LBPCB_FAIL_SN = {}
+LBPCB_FAIL_SN = {'1821925953098':0, '1822025953976':0, 
+                    '1822325950716':0, '1822325950442':0, 
+                    '1822625959024':0, '1822625959209':0, 
+                    '1822625957788':0, '1822325958301':0, 
+                    '1822625957789':0, '1822625958383':0}
 
 # TO-DO: Initialize a dictionary to keep track of total LBPCB serial numbers
-# TOTAL_LBPCB_SN = {}
-
-def extract_tray_sn(line: str, search_key: str) -> str | None:
-    """
-    Extracts the value following 'TRAY_SN:' from a given string.
-    
-    Args:
-        line: The input string containing the key-value pair.
-        
-    Returns:
-        The extracted serial number as a string, or None if the key isn't found.
-    """
-    #key = "TRAY_SN:"
-    key = search_key
-    
-    # Check if the key exists in the line
-    if key in line:
-        # Split the string by the key and take the second part
-        # The 1 ensures we only split on the first occurrence
-        parts = line.split(key, 1)
-        if len(parts) > 1:
-            # strip() removes any leading/trailing whitespace or newlines
-            return parts[1].strip()
-            
-    return None
-
-def process_file_for_tray_sn(file_path: str, search_key: str):
-    """
-    Reads a file line by line and attempts to find the TRAY_SN key.
-    """
-    if not os.path.exists(file_path):
-        print(f"Error: File '{file_path}' not found.")
-        return None
-
-    try:
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            for line_num, line in enumerate(f, 1):
-                result = extract_tray_sn(line, search_key)
-                if result:
-                    return result
-    except Exception as e:
-        print(f"An error occurred while reading the file: {e}")
-    
-    return None
-
-
-
-# def extract_keyword(line: str, key: str = "TRAY_SN") -> str | None:
-#     """
-#     Extracts the value following a specific key (e.g., 'TRAY_SN:') from a given string.
-#     """
-#     search_key = f"{key}:"
-#     if search_key in line:
-#         parts = line.split(search_key)
-#         if len(parts) > 1:
-#             return parts[1].strip()
-#     return None
+TOTAL_LBPCB_SN = {}
 
 def get_log_files_in_date_range(base_pattern: str, 
                                 start_date_str: str, 
@@ -148,67 +91,10 @@ def parse_log_file(file_path):
               empty list if no matching entries are found.
     """
     extracted_data = []
-
-    board_sn = process_file_for_tray_sn(file_path, "BrdSN:")
-    if board_sn:
-        print(f"Extracted BrdSN: {board_sn}")
-    else:
-        print("BrdSN key not found in the file.")
-
-    tray_sn = process_file_for_tray_sn(file_path, "TRAY_SN:")
-    if tray_sn:
-        print(f"Extracted TRAY_SN: {tray_sn}")
-    else:
-        print("TRAY_SN key not found in the file.")
-    
-    flat_id = process_file_for_tray_sn(file_path, "FLAT ID:")
-    if flat_id:
-        print(f"Extracted FLAT ID: {flat_id}")
-    else:
-        print("FLAT ID key not found in the file.")
-    
-    fox_routing = process_file_for_tray_sn(file_path, "FOX_Routing:")
-    if fox_routing:
-        print(f"Extracted FOX Routing: {fox_routing}")
-    else:
-        print("FOX_Routing key not found in the file.")
-
-    error_code = process_file_for_tray_sn(file_path, "Error Code:")
-    if error_code:
-        print(f"Extracted Error Code: {error_code}")
-    else:
-        print("Error Code key not found in the file.")
-
-    product_pn = process_file_for_tray_sn(file_path, "PN:")
-    if product_pn:
-        print(f"Extracted PN: {product_pn}")
-    else:
-        print("PN key not found in the file.")
-
-    diag_version = process_file_for_tray_sn(file_path, "DiagVer:")
-    if diag_version:
-        print(f"Extracted DiagVer: {diag_version}")
-    else:
-        print("DiagVer key not found in the file.")
-    
-    start_test_time = process_file_for_tray_sn(file_path, "StartTestTime:")
-    if start_test_time:
-        print(f"Extracted StartTestTime: {start_test_time}")
-    else:
-        print("StartTestTime key not found in the file.")
-
-    end_test_time = process_file_for_tray_sn(file_path, "EndTestTime:")
-    if end_test_time:
-        print(f"Extracted EndTestTime: {end_test_time}")
-    else:
-        print("EndTestTime key not found in the file.")
-
-    # sn_548 = None
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             lines = f.readlines()
-            # results_sn = {}
-            results_cbc = {}
+            results = {}
             device_name = ""
 
             for i, line in enumerate(lines):
@@ -217,39 +103,41 @@ def parse_log_file(file_path):
                 if "FRU Device Description" in line:
                     if "ProcMod_0" in line:
                         procmod_0 = "ProcMod_0"
+
+                if procmod_0 and (i + 2) < len(lines):
+                    serial_line = lines[i + 2]
+                    if "Board Serial Number" in serial_line:
+                        serial_number = serial_line.split()[-1]
+                        results["SN"] = serial_number
+            sn_548 = results.get("SN", "N/A")
+
+            for i, line in enumerate(lines):
+                if "FRU Device Description" in line:
                     if "CBC_0" in line:
                         device_name = "CBC_0"
                     elif "CBC_1" in line:
                         device_name = "CBC_1"
-
+                
                 if device_name and (i + 2) < len(lines):
                     serial_line = lines[i + 2]
                     if "Board Serial Number" in serial_line:
                         serial_number = serial_line.split()[-1]
-                        results_cbc[device_name] = serial_number
+                        results[device_name] = serial_number
 
-                # if procmod_0 and (i + 2) < len(lines):
-                #     serial_line = lines[i + 2]
-                #     if "Board Serial Number" in serial_line:
-                #         serial_number = serial_line.split()[-1]
-                #         results_sn["SN"] = serial_number
-                #         sn_548 = results_sn.get("SN", "N/A")
+            cbc0 = results.get("CBC_0")
+            cbc1 = results.get("CBC_1")
 
-            
-            cbc0 = results_cbc.get("CBC_0")
-            cbc1 = results_cbc.get("CBC_1")
+            if cbc0 in LBPCB_FAIL_SN: 
+                LBPCB_FAIL_SN[cbc0] += 1
+                print(f"Key '{cbc0}' found and its value was incremented.")
+            else:
+                 print(f"Key '{cbc0}' not found in the dictionary.")
 
-            # if cbc0 in LBPCB_FAIL_SN: 
-            #     LBPCB_FAIL_SN[cbc0] += 1
-            #     print(f"Key '{cbc0}' found and its value was incremented.")
-            # else:
-            #      print(f"Key '{cbc0}' not found in the dictionary.")
-
-            # if cbc1 in LBPCB_FAIL_SN: 
-            #     LBPCB_FAIL_SN[cbc1] += 1
-            #     print(f"Key '{cbc1}' found and its value was incremented.")
-            # else:
-            #      print(f"Key '{cbc1}' not found in the dictionary.")
+            if cbc1 in LBPCB_FAIL_SN: 
+                LBPCB_FAIL_SN[cbc1] += 1
+                print(f"Key '{cbc1}' found and its value was incremented.")
+            else:
+                 print(f"Key '{cbc1}' not found in the dictionary.")
 
             # Iterate through each line with its index
             for i, line in enumerate(lines):
@@ -278,26 +166,17 @@ def parse_log_file(file_path):
                             gpu = gpu_match.group(1) if gpu_match else "N/A"
                             nvlink = nvlink_match.group(1) if nvlink_match else "N/A"
                             lane = lane_match.group(1) if lane_match else "N/A"
-                
+
                             # Store the found data
                             extracted_data.append({
-                                'SN': board_sn,
-                                'Tray_SN': tray_sn,
-                                'POD_Rack_Slot': flat_id,
-                                'FOX_Routing': fox_routing,
-                                'Error_Code': error_code,
+                                'SN': sn_548,
+                                'log_file_name': os.path.basename(file_path),
                                 'GPU': gpu,
                                 'Nvlink': nvlink,
                                 'Lane': lane,
                                 'NVL0_SN' : cbc0,
-                                'NVL1_SN' : cbc1,
-                                'PN' : product_pn,
-                                'Diag' : diag_version,
-                                'StartTestTime': start_test_time,
-                                'EndTestTime': end_test_time,
-                                'log_file_name': os.path.basename(file_path)
+                                'NVL1_SN' : cbc1
                             })
-                            print(extracted_data)
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
 
@@ -331,14 +210,11 @@ def main():
     
     # 1. This is your original glob pattern
     #    Note: Use forward slashes '/'.
-    # LOG_PATTERN = 'Z:/Bianca/GDL_20260214_0317_Log/Mar_logs_archive/????-??-??/??/*.log'
     LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
-    # LOG_PATTERN = 'D:/TestLogs/????-??-??/??/*.log'
-    # LOG_PATTERN = 'C:/Users/kvh10/Downloads/OneDrive_1_2026-3-17/2026-03-16_23_FCT_logs/????-??-??/??/*.log'
     
     # 2. Set your desired date range
-    START_DATE = "2026-03-20" # "2026-01-21" # "2025-10-10"
-    END_DATE   = "2026-03-20" # "2026-02-01" # "2025-10-15"
+    START_DATE = "2026-01-21" # "2025-10-10"
+    END_DATE = "2026-02-01"   # "2025-10-15"
 
     # --- Run the function ---
     
@@ -356,7 +232,7 @@ def main():
         print("--- No .log files found matching the criteria. ---")
         return
 
-    csv_output_path = 'EC140_' + START_DATE + '_' + END_DATE + '.csv'
+    csv_output_path = 'core_error_140_nvlchannel_' + START_DATE + '_' + END_DATE + '.csv'
     all_data = []
 
     # Find all files ending with .log in the specified directory
@@ -379,7 +255,7 @@ def main():
     try:
         with open(csv_output_path, 'w', newline='', encoding='utf-8') as csvfile:
             # Define the column headers for the CSV
-            fieldnames = ['SN', 'Tray_SN', 'POD_Rack_Slot', 'FOX_Routing', 'Error_Code', 'GPU', 'Nvlink', 'Lane', 'NVL0_SN', 'NVL1_SN', 'PN', 'Diag', 'StartTestTime', 'EndTestTime', 'log_file_name']
+            fieldnames = ['SN', 'log_file_name', 'GPU', 'Nvlink', 'Lane', 'NVL0_SN', 'NVL1_SN']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
             writer.writeheader()
