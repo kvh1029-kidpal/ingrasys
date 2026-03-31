@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Top 10 Error Diagnostic Dashboard</title>
+    <title>Datacenter Reliability Dashboard (Top 10) (0330)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -12,44 +12,35 @@
         .container { max-width: 95%; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .hidden { display: none; }
         
-        /* Upload Section */
-        #uploadSection { text-align: center; padding: 50px; border: 2px dashed #ccc; border-radius: 15px; margin: 50px auto; max-width: 600px; background: #fff; }
-        .file-input { margin-top: 20px; font-size: 1rem; cursor: pointer; }
+        #uploadSection { text-align: center; padding: 50px; border: 2px dashed #3498db; border-radius: 15px; margin: 50px auto; max-width: 600px; background: #fff; }
         
-        /* Navigation & Tabs */
         .back-btn { cursor: pointer; color: #007bff; font-weight: bold; margin-bottom: 20px; display: inline-block; }
         .pod-tabs { display: flex; gap: 8px; margin-bottom: 25px; border-bottom: 2px solid #e9ecef; overflow-x: auto; padding-bottom: 8px; }
         .pod-tab { padding: 10px 20px; cursor: pointer; background: #f1f3f5; border-radius: 6px; font-weight: 600; white-space: nowrap; transition: 0.3s; display: flex; flex-direction: column; align-items: center; border: 1px solid transparent; min-width: 130px; }
-        .pod-tab.active { background: #007bff; color: white; border-color: #0056b3; box-shadow: 0 2px 5px rgba(0,123,255,0.4); }
-        .pod-percent { font-size: 0.75rem; font-weight: normal; opacity: 0.9; margin-top: 4px; }
+        .pod-tab.active { background: #007bff; color: white; border-color: #0056b3; }
 
-        /* Matrix Table */
         .matrix-wrapper { overflow-x: auto; border: 1px solid #dee2e6; border-radius: 8px; margin-top: 15px; }
-        table.matrix-table { border-collapse: collapse; table-layout: fixed; min-width: 2600px; }
-        .matrix-table th, .matrix-table td { border: 1px solid #e9ecef; width: 42px; height: 38px; text-align: center; font-size: 0.7rem; position: relative; }
+        table.matrix-table { border-collapse: collapse; table-layout: fixed; min-width: 2800px; }
+        .matrix-table th, .matrix-table td { border: 1px solid #e9ecef; width: 45px; height: 38px; text-align: center; font-size: 0.7rem; position: relative; }
         .matrix-table th { background: #f8f9fa; color: #6c757d; font-weight: bold; position: sticky; top: 0; z-index: 1; }
         .slot-label { background: #f8f9fa !important; width: 100px !important; text-align: left !important; padding-left: 10px; font-weight: bold; position: sticky; left: 0; z-index: 3; border-right: 2px solid #dee2e6 !important; }
 
-        /* Cell Visuals & Tooltips */
         .cell-fail { background-color: #ff4d4d; color: white; font-weight: bold; cursor: help; }
-        .cell-fail:hover { background-color: #d63031; z-index: 10; transform: scale(1.05); transition: 0.1s; }
+        .cell-fail:hover { background-color: #d63031; z-index: 10; transform: scale(1.1); transition: 0.1s; }
         .cell-ok { background-color: #ffffff; color: #eee; }
+        
+        /* Tooltip */
         .cell-fail::after {
             content: attr(data-sns); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
-            background: #2d3436; color: white; padding: 8px; border-radius: 4px; white-space: pre-wrap; width: 240px;
-            font-size: 0.75rem; display: none; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); line-height: 1.2; text-align: left;
+            background: #2d3436; color: white; padding: 10px; border-radius: 4px; white-space: pre-wrap; width: 220px;
+            font-size: 0.75rem; display: none; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: left;
         }
         .cell-fail:hover::after { display: block; }
 
-        /* SN Grid */
-        .sn-header-row { display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; }
         .sn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; max-height: 250px; overflow-y: auto; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
-        .sn-item { background: white; border: 1px solid #ddd; padding: 6px; border-radius: 4px; font-size: 0.8rem; text-align: center; font-family: 'Courier New', monospace; }
-        
+        .sn-item { background: white; border: 1px solid #ddd; padding: 6px; border-radius: 4px; font-size: 0.8rem; text-align: center; font-family: monospace; }
         .download-btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .download-btn:hover { background: #219150; }
-        .section-title { color: #1a2a6c; border-left: 5px solid #007bff; padding-left: 10px; font-size: 1.2rem; }
-        .chart-box { max-width: 700px; margin: 30px auto; }
+        .chart-box { max-width: 650px; margin: 30px auto; height: 400px; }
     </style>
 </head>
 <body>
@@ -60,9 +51,9 @@
 
 <div id="uploadPage" class="container">
     <div id="uploadSection">
-        <h2>📊 Load Hardware Diagnostic Logs</h2>
+        <h2>📊 Load Diagnostic Log</h2>
         <p>Select a <b>.csv</b> file to analyze top errors and rack distribution.</p>
-        <input type="file" id="csvFileInput" class="file-input" accept=".csv" />
+        <input type="file" id="csvFileInput" accept=".csv" />
     </div>
 </div>
 
@@ -71,22 +62,20 @@
     <div class="chart-box">
         <canvas id="errorPieChart"></canvas>
     </div>
-    <p style="text-align: center; color: #666;">Click on a slice to drill down into the POD and Rack localization.</p>
 </div>
 
 <div id="detailsPage" class="container hidden">
     <div class="back-btn" onclick="showPage('overviewPage')">← Back to Overview</div>
     <h2 id="errTitle">Error Analysis</h2>
-
     <div class="pod-tabs" id="podTabs"></div>
-
-    <div class="sn-header-row">
-        <h3 class="section-title">1.1 Impacted SN List</h3>
-        <button class="download-btn" onclick="downloadFilteredCSV()">Export POD Data (.csv)</button>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="border-left: 5px solid #007bff; padding-left: 10px;">1.1 Impacted SN List</h3>
+        <button class="download-btn" onclick="downloadFilteredCSV()">Export POD CSV</button>
     </div>
-    <div class="sn-grid" id="snGrid" style="margin-top:15px;"></div>
+    <div class="sn-grid" id="snGrid" style="margin-top:10px;"></div>
 
-    <h3 class="section-title" style="margin-top: 2rem;">1.2 Rack Matrix (60 Racks x 20 Slots)</h3>
+    <h3 style="border-left: 5px solid #007bff; padding-left: 10px; margin-top: 2rem;">1.2 Rack Matrix (Full Range R1-R60)</h3>
     <div class="matrix-wrapper">
         <table class="matrix-table" id="rackMatrix"></table>
     </div>
@@ -97,27 +86,24 @@
     let top10Codes = [];
     let activeError = "";
     let activePod = "";
-    const TOTAL_RACKS = 60;
+    
+    // Config: 60 Racks and typical Slot naming
+    const RACK_COUNT = 60;
     const SLOTS = ["T1L", "T1R", "T2L", "T2R", "T3L", "T3R", "T4L", "T4R", "T5L", "T5R", "T6L", "T6R", "T7L", "T7R", "T8L", "T8R", "T9L", "T9R", "T10L", "T10R"];
     let chartObj = null;
 
     document.getElementById('csvFileInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         Papa.parse(file, {
             header: true,
             skipEmptyLines: true,
-            complete: function(results) {
-                processData(results.data);
-            }
+            complete: function(results) { processData(results.data); }
         });
     });
 
     function processData(rawData) {
         masterData = {};
-        
-        // 1. Process all logs (ignoring "0" or empty codes)
         rawData.forEach(row => {
             const err = row.Error_Code;
             if (!err || err === "0" || err.toLowerCase() === "na") return;
@@ -127,27 +113,24 @@
             if (pathParts.length < 4) return;
 
             const pod = pathParts[1];
-            const rack = pathParts[2];
+            // Normalize Rack ID: strip leading zeros or "R" for internal logic, but keep "R" for display
+            let rackRaw = pathParts[2]; 
+            let rackNum = parseInt(rackRaw.replace(/\D/g, '')); // "R05" -> 5, "R12" -> 12
+            const rackKey = "R" + rackNum; 
             const slot = pathParts[3];
 
             if (!masterData[err]) masterData[err] = { total: 0, pods: {} };
-            if (!masterData[err].pods[pod]) {
-                masterData[err].pods[pod] = { sns: [], matrix: {} };
-            }
+            if (!masterData[err].pods[pod]) masterData[err].pods[pod] = { sns: [], matrix: {} };
 
             masterData[err].total++;
             masterData[err].pods[pod].sns.push(sn);
             
-            if (!masterData[err].pods[pod].matrix[rack]) masterData[err].pods[pod].matrix[rack] = {};
-            if (!masterData[err].pods[pod].matrix[rack][slot]) masterData[err].pods[pod].matrix[rack][slot] = [];
-            masterData[err].pods[pod].matrix[rack][slot].push(sn);
+            if (!masterData[err].pods[pod].matrix[rackKey]) masterData[err].pods[pod].matrix[rackKey] = {};
+            if (!masterData[err].pods[pod].matrix[rackKey][slot]) masterData[err].pods[pod].matrix[rackKey][slot] = [];
+            masterData[err].pods[pod].matrix[rackKey][slot].push(sn);
         });
 
-        // 2. Determine Top 10 Errors
-        top10Codes = Object.keys(masterData)
-            .sort((a, b) => masterData[b].total - masterData[a].total)
-            .slice(0, 10);
-
+        top10Codes = Object.keys(masterData).sort((a,b) => masterData[b].total - masterData[a].total).slice(0, 10);
         initOverviewChart();
         showPage('overviewPage');
     }
@@ -155,33 +138,19 @@
     function initOverviewChart() {
         const ctx = document.getElementById('errorPieChart').getContext('2d');
         if (chartObj) chartObj.destroy();
-        
-        const dataValues = top10Codes.map(code => masterData[code].total);
-
         chartObj = new Chart(ctx, {
             type: 'pie',
             data: {
                 labels: top10Codes,
                 datasets: [{
-                    data: dataValues,
-                    backgroundColor: [
-                        '#0984e3', '#00b894', '#d63031', '#f1c40f', '#8e44ad', 
-                        '#fd79a8', '#00cec9', '#fab1a0', '#e17055', '#636e72'
-                    ]
+                    data: top10Codes.map(c => masterData[c].total),
+                    backgroundColor: ['#0984e3', '#00b894', '#d63031', '#f1c40f', '#8e44ad', '#fd79a8', '#00cec9', '#fab1a0', '#e17055', '#636e72']
                 }]
             },
             options: {
-                responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { position: 'bottom' }
-                },
-                onClick: (e, items) => {
-                    if (items.length > 0) {
-                        activeError = top10Codes[items[0].index];
-                        renderDetails(activeError);
-                    }
-                }
+                plugins: { legend: { position: 'bottom' } },
+                onClick: (e, items) => { if (items.length > 0) { activeError = top10Codes[items[0].index]; renderDetails(activeError); } }
             }
         });
     }
@@ -190,16 +159,11 @@
         document.getElementById('errTitle').innerText = `Error Code: ${errCode}`;
         const pods = Object.keys(masterData[errCode].pods).sort();
         const tabEl = document.getElementById('podTabs');
-        const totalForThisError = masterData[errCode].total;
+        const total = masterData[errCode].total;
         
         tabEl.innerHTML = pods.map((p, i) => {
-            const count = masterData[errCode].pods[p].sns.length;
-            const percentage = ((count / totalForThisError) * 100).toFixed(1);
-            return `
-                <div class="pod-tab ${i===0?'active':''}" onclick="switchPod('${p}', this)">
-                    <span>${p}</span>
-                    <span class="pod-percent">${percentage}% of Error</span>
-                </div>`;
+            const perc = ((masterData[errCode].pods[p].sns.length / total) * 100).toFixed(1);
+            return `<div class="pod-tab ${i===0?'active':''}" onclick="switchPod('${p}', this)"><span>${p}</span><span style="font-size:0.7rem">${perc}%</span></div>`;
         }).join('');
 
         loadPodLayout(errCode, pods[0]);
@@ -218,18 +182,19 @@
         document.getElementById('snGrid').innerHTML = data.sns.map(s => `<div class="sn-item">${s}</div>`).join('');
 
         const matrixEl = document.getElementById('rackMatrix');
+        // Build Headers for all 60 Racks
         let html = `<thead><tr><th class="slot-label">Slot \\ Rack</th>`;
-        for (let r = 1; r <= TOTAL_RACKS; r++) { html += `<th>R${r}</th>`; }
+        for (let r = 1; r <= RACK_COUNT; r++) { html += `<th>R${r}</th>`; }
         html += `</tr></thead><tbody>`;
 
         SLOTS.forEach(slotID => {
             html += `<tr><td class="slot-label">${slotID}</td>`;
-            for (let r = 1; r <= TOTAL_RACKS; r++) {
-                const rackID = `R${r}`;
-                const snList = (data.matrix[rackID] && data.matrix[rackID][slotID]) ? data.matrix[rackID][slotID] : [];
+            for (let r = 1; r <= RACK_COUNT; r++) {
+                const rackKey = "R" + r;
+                const snList = (data.matrix[rackKey] && data.matrix[rackKey][slotID]) ? data.matrix[rackKey][slotID] : [];
                 const count = snList.length;
                 const css = count > 0 ? 'cell-fail' : 'cell-ok';
-                const snsAttr = count > 0 ? `data-sns="Location: ${rackID}-${slotID}\nTotal SNs: ${count}\n\nList:\n${snList.join('\n')}"` : '';
+                const snsAttr = count > 0 ? `data-sns="Rack ${rackKey} | Slot ${slotID}\nTotal: ${count}\n\nSNs:\n${snList.join('\n')}"` : '';
                 html += `<td class="${css}" ${snsAttr}>${count > 0 ? count : ''}</td>`;
             }
             html += `</tr>`;
@@ -239,7 +204,7 @@
 
     function downloadFilteredCSV() {
         const data = masterData[activeError].pods[activePod];
-        let csv = "Serial Number,POD,Rack,Slot\n";
+        let csv = "SN,POD,Rack,Slot\n";
         Object.keys(data.matrix).forEach(r => {
             Object.keys(data.matrix[r]).forEach(s => {
                 data.matrix[r][s].forEach(sn => csv += `${sn},${activePod},${r},${s}\n`);
@@ -248,17 +213,14 @@
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.setAttribute('href', url);
-        a.setAttribute('download', `Filtered_${activeError}_${activePod}.csv`);
+        a.href = url;
+        a.download = `Filtered_${activeError}_${activePod}.csv`;
         a.click();
     }
 
     function showPage(id) {
-        document.getElementById('uploadPage').classList.add('hidden');
-        document.getElementById('overviewPage').classList.add('hidden');
-        document.getElementById('detailsPage').classList.add('hidden');
+        ['uploadPage','overviewPage','detailsPage'].forEach(p => document.getElementById(p).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
-        window.scrollTo(0,0);
     }
 </script>
 </body>
