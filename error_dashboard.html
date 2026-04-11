@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datacenter Reliability Dashboard (Top 10) (0411)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; background: #f0f2f5; color: #333; }
+        header { background: #1a2a6c; color: white; padding: 1.2rem; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .container { max-width: 95%; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .hidden { display: none; }
+        
+        /* Status Message */
+        #loadingStatus { text-align: center; padding: 40px; font-size: 1.2rem; color: #1a2a6c; }
+        .error-msg { color: #d63031; font-weight: bold; }
+
+        .back-btn { cursor: pointer; color: #007bff; font-weight: bold; margin-bottom: 20px; display: inline-block; }
+        .pod-tabs { display: flex; gap: 8px; margin-bottom: 25px; border-bottom: 2px solid #e9ecef; overflow-x: auto; padding-bottom: 8px; }
+        .pod-tab { padding: 10px 20px; cursor: pointer; background: #f1f3f5; border-radius: 6px; font-weight: 600; white-space: nowrap; transition: 0.3s; display: flex; flex-direction: column; align-items: center; border: 1px solid transparent; min-width: 130px; }
+        .pod-tab.active { background: #007bff; color: white; border-color: #0056b3; }
+        .pod-percent { font-size: 0.75rem; font-weight: normal; opacity: 0.9; margin-top: 4px; }
+
+        /* Matrix Table */
+        .matrix-wrapper { overflow-x: auto; border: 1px solid #dee2e6; border-radius: 8px; margin-top: 15px; }
+        table.matrix-table { border-collapse: collapse; table-layout: fixed; min-width: 2800px; }
+        .matrix-table th, .matrix-table td { border: 1px solid #e9ecef; width: 45px; height: 38px; text-align: center; font-size: 0.7rem; position: relative; }
+        .matrix-table th { background: #f8f9fa; color: #6c757d; font-weight: bold; position: sticky; top: 0; z-index: 1; }
+        .slot-label { background: #f8f9fa !important; width: 100px !important; text-align: left !important; padding-left: 10px; font-weight: bold; position: sticky; left: 0; z-index: 3; border-right: 2px solid #dee2e6 !important; }
+
+        .cell-fail { background-color: #ff4d4d; color: white; font-weight: bold; cursor: help; }
+        .cell-fail:hover { background-color: #d63031; z-index: 10; transform: scale(1.1); transition: 0.1s; }
+        .cell-ok { background-color: #ffffff; color: #eee; }
+        
+        .cell-fail::after {
+            content: attr(data-sns); position: absolute; bottom: 125%; left: 50%; transform: translateX(-50%);
+            background: #2d3436; color: white; padding: 10px; border-radius: 4px; white-space: pre-wrap; width: 220px;
+            font-size: 0.75rem; display: none; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-align: left;
+        }
+        .cell-fail:hover::after { display: block; }
+
+        .sn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; max-height: 250px; overflow-y: auto; padding: 15px; border: 1px solid #eee; border-radius: 8px; background: #fafafa; }
+        .sn-item { background: white; border: 1px solid #ddd; padding: 6px; border-radius: 4px; font-size: 0.8rem; text-align: center; font-family: monospace; }
+        .download-btn { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .chart-box { max-width: 650px; margin: 30px auto; height: 400px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Datacenter Diagnostic: dailyerror.csv</h1>
+</header>
+
+<div id="loadingPage" class="container">
+    <div id="loadingStatus">🔄 Attempting to load <b>dailyerror.csv</b> from local folder...</div>
+</div>
+
+<div id="overviewPage" class="container hidden">
+    <h2>Top 10 Errors Found Today</h2>
+    <div class="chart-box">
+        <canvas id="errorPieChart"></canvas>
+    </div>
+</div>
+
+<div id="detailsPage" class="container hidden">
+    <div class="back-btn" onclick="showPage('overviewPage')">← Back to Overview</div>
+    <h2 id="errTitle">Error Analysis</h2>
+    <div class="pod-tabs" id="podTabs"></div>
+    
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="border-left: 5px solid #007bff; padding-left: 10px;">1.1 Impacted SN List</h3>
+        <button class="download-btn" onclick="downloadFilteredCSV()">Export POD CSV</button>
+    </div>
+    <div class="sn-grid" id="snGrid" style="margin-top:10px;"></div>
+
+    <h3 style="border-left: 5px solid #007bff; padding-left: 10px; margin-top: 2rem;">1.2 Rack Matrix (Full Range R1-R60)</h3>
+    <div class="matrix-wrapper">
+        <table class="matrix-table" id="rackMatrix"></table>
+    </div>
+</div>
+
+<script>
+    let masterData = {};
+    let top10Codes = [];
+    let activeError = "";
+    let activePod = "";
+    const RACK_COUNT = 60;
+    const SLOTS = ["T1L", "T1R", "T2L", "T2R", "T3L", "T3R", "T4L", "T4R", "T5L", "T5R", "T6L", "T6R", "T7L", "T7R", "T8L", "T8R", "T9L", "T9R", "T10L", "T10R"];
+    let chartObj = null;
+
+    // --- AUTOMATIC LOADING LOGIC ---
+    window.addEventListener('DOMContentLoaded', (event) => {
+        const targetFile = 'dailyerror.csv';
+        
+        fetch(targetFile)
+            .then(response => {
+                if (!response.ok) throw new Error("Could not find dailyerror.csv");
+                return response.text();
+            })
+            .then(csvText => {
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        processData(results.data);
+                    }
+                });
+            })
+            .catch(err => {
+                document.getElementById('loadingStatus').innerHTML = `
+                    <div class="error-msg">❌ Error Loading File</div>
+                    <p>Make sure <b>dailyerror.csv</b> is in the same folder as this HTML file.</p>
+                `;
+                console.error(err);
+            });
+    });
+
+    function processData(rawData) {
+        masterData = {};
+        rawData.forEach(row => {
+            const err = row.Error_Code;
+            if (!err || err === "0" || err.toLowerCase() === "na") return;
+
+            const sn = row.SN;
+            const pathParts = row.POD_Rack_Slot ? row.POD_Rack_Slot.split('-') : [];
+            if (pathParts.length < 4) return;
+
+            const pod = pathParts[1];
+            let rackRaw = pathParts[2]; 
+            let rackNum = parseInt(rackRaw.replace(/\D/g, '')); 
+            const rackKey = "R" + rackNum; 
+            const slot = pathParts[3];
+
+            if (!masterData[err]) masterData[err] = { total: 0, pods: {} };
+            if (!masterData[err].pods[pod]) masterData[err].pods[pod] = { sns: [], matrix: {} };
+
+            masterData[err].total++;
+            masterData[err].pods[pod].sns.push(sn);
+            
+            if (!masterData[err].pods[pod].matrix[rackKey]) masterData[err].pods[pod].matrix[rackKey] = {};
+            if (!masterData[err].pods[pod].matrix[rackKey][slot]) masterData[err].pods[pod].matrix[rackKey][slot] = [];
+            masterData[err].pods[pod].matrix[rackKey][slot].push(sn);
+        });
+
+        top10Codes = Object.keys(masterData).sort((a,b) => masterData[b].total - masterData[a].total).slice(0, 10);
+        
+        if (top10Codes.length === 0) {
+            document.getElementById('loadingStatus').innerHTML = "✅ dailyerror.csv loaded, but no errors (Error_Code > 0) were found.";
+            return;
+        }
+
+        initOverviewChart();
+        showPage('overviewPage');
+    }
+
+    // (Visual functions remain the same as previous stable version)
+    function initOverviewChart() {
+        const ctx = document.getElementById('errorPieChart').getContext('2d');
+        if (chartObj) chartObj.destroy();
+        chartObj = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: top10Codes,
+                datasets: [{
+                    data: top10Codes.map(c => masterData[c].total),
+                    backgroundColor: ['#0984e3', '#00b894', '#d63031', '#f1c40f', '#8e44ad', '#fd79a8', '#00cec9', '#fab1a0', '#e17055', '#636e72']
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                onClick: (e, items) => { if (items.length > 0) { activeError = top10Codes[items[0].index]; renderDetails(activeError); } }
+            }
+        });
+    }
+
+    function renderDetails(errCode) {
+        document.getElementById('errTitle').innerText = `Error Code: ${errCode}`;
+        const pods = Object.keys(masterData[errCode].pods).sort();
+        const tabEl = document.getElementById('podTabs');
+        const total = masterData[errCode].total;
+        
+        tabEl.innerHTML = pods.map((p, i) => {
+            const perc = ((masterData[errCode].pods[p].sns.length / total) * 100).toFixed(1);
+            return `<div class="pod-tab ${i===0?'active':''}" onclick="switchPod('${p}', this)"><span>${p}</span><span style="font-size:0.7rem">${perc}%</span></div>`;
+        }).join('');
+
+        loadPodLayout(errCode, pods[0]);
+        showPage('detailsPage');
+    }
+
+    function switchPod(podName, btn) {
+        document.querySelectorAll('.pod-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        loadPodLayout(activeError, podName);
+    }
+
+    function loadPodLayout(errCode, podName) {
+        activePod = podName;
+        const data = masterData[errCode].pods[podName];
+        document.getElementById('snGrid').innerHTML = data.sns.map(s => `<div class="sn-item">${s}</div>`).join('');
+
+        const matrixEl = document.getElementById('rackMatrix');
+        let html = `<thead><tr><th class="slot-label">Slot \\ Rack</th>`;
+        for (let r = 1; r <= RACK_COUNT; r++) { html += `<th>R${r}</th>`; }
+        html += `</tr></thead><tbody>`;
+
+        SLOTS.forEach(slotID => {
+            html += `<tr><td class="slot-label">${slotID}</td>`;
+            for (let r = 1; r <= RACK_COUNT; r++) {
+                const rackKey = "R" + r;
+                const snList = (data.matrix[rackKey] && data.matrix[rackKey][slotID]) ? data.matrix[rackKey][slotID] : [];
+                const count = snList.length;
+                const css = count > 0 ? 'cell-fail' : 'cell-ok';
+                const snsAttr = count > 0 ? `data-sns="Rack ${rackKey} | Slot ${slotID}\nTotal: ${count}\n\nSNs:\n${snList.join('\n')}"` : '';
+                html += `<td class="${css}" ${snsAttr}>${count > 0 ? count : ''}</td>`;
+            }
+            html += `</tr>`;
+        });
+        matrixEl.innerHTML = html + `</tbody>`;
+    }
+
+    function downloadFilteredCSV() {
+        const data = masterData[activeError].pods[activePod];
+        let csv = "SN,POD,Rack,Slot\n";
+        Object.keys(data.matrix).forEach(r => {
+            Object.keys(data.matrix[r]).forEach(s => {
+                data.matrix[r][s].forEach(sn => csv += `${sn},${activePod},${r},${s}\n`);
+            });
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Filtered_${activeError}_${activePod}.csv`;
+        a.click();
+    }
+
+    function showPage(id) {
+        ['loadingPage', 'overviewPage', 'detailsPage'].forEach(p => document.getElementById(p).classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
