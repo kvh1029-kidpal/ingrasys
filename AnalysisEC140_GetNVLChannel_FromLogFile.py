@@ -192,10 +192,13 @@ def check_filename(filename: str) -> bool:
     Returns:
         True if either substring is found, False otherwise.
     """
-    if "_FCT_" in filename:
-        return True
-    if "_NVL_" in filename:
-        return True
+
+    if "_F_" in filename:
+         return True
+    # if "_FCT_" in filename:
+    #    return True
+    # if "_NVL_" in filename:
+    #    return True
     
     # If neither substring was found, return False
     return False
@@ -213,8 +216,8 @@ def main():
     LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
     
     # 2. Set your desired date range
-    START_DATE = "2025-11-16" # "2025-10-10"
-    END_DATE = "2025-11-23"   # "2025-10-15"
+    START_DATE = "2026-05-13" # "2025-10-10"
+    END_DATE = "2026-05-16"   # "2025-10-15"
 
     # --- Run the function ---
     

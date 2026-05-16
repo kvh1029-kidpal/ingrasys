@@ -252,26 +252,28 @@ def parse_log_file(file_path):
             #      print(f"Key '{cbc1}' not found in the dictionary.")
 
         # if error_code == 'E108003006_023-049-0-000000000008':
-        if error_code == 'E028163006_000-001-1-0-008-00-546-284':
-            # Store the found data
-            extracted_data.append({
-                'SN': board_sn,
-                'Tray_SN': tray_sn,
-                'POD_Rack_Slot': flat_id,
-                'FOX_Routing': fox_routing,
-                'Error_Code': error_code,
-                'GPU': None,
-                'Nvlink': None,
-                'Lane': None,
-                'NVL0_SN' : cbc0,
-                'NVL1_SN' : cbc1,
-                'PN' : product_pn,
-                'Diag' : diag_version,
-                'StartTestTime': start_test_time,
-                'EndTestTime': end_test_time,
-                'log_file_name': os.path.basename(file_path)
-            })
-            print(extracted_data)
+        # if error_code == 'E028163006_000-001-1-0-008-00-546-284':
+        # if error_code == 'E028163006_000-000-0-000000000001':
+        # if error_code == 'E028001006_654':
+        # Store the found data
+        extracted_data.append({
+            'SN': board_sn,
+            'Tray_SN': tray_sn,
+            'POD_Rack_Slot': flat_id,
+            'FOX_Routing': fox_routing,
+            'Error_Code': error_code,
+            'GPU': None,
+            'Nvlink': None,
+            'Lane': None,
+            'NVL0_SN' : cbc0,
+            'NVL1_SN' : cbc1,
+            'PN' : product_pn,
+            'Diag' : diag_version,
+            'StartTestTime': start_test_time,
+            'EndTestTime': end_test_time,
+            'log_file_name': os.path.basename(file_path)
+        })
+            # print(extracted_data)
     except Exception as e:
         print(f"Error processing file {file_path}: {e}")
 
@@ -287,13 +289,19 @@ def check_filename(filename: str) -> bool:
     Returns:
         True if either substring is found, False otherwise.
     """
-    if "_FCT_" in filename:
-        return True
-    # if "_NVL_" in filename:
+    if "_F_" in filename:
+         return True
+    # if "-TS3_" in filename and "_F_" in filename:
     #     return True
+    # if "_FCT_" in filename:
+    #     return True
+    # if "_NVL_" in filename:
+    #      return True
     # if "_IST_" in filename:
-    #    return True
-    
+    #     return True
+    else:
+        return False
+
     # If neither substring was found, return False
     return False
 
@@ -308,13 +316,14 @@ def main():
     # 1. This is your original glob pattern
     #    Note: Use forward slashes '/'.
     # LOG_PATTERN = 'Z:/Bianca/GDL_20260214_0317_Log/Mar_logs_archive/????-??-??/??/*.log'
-    # LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
-    LOG_PATTERN = 'D:/TestLogs/????-??-??/??/*.log'
+    LOG_PATTERN = 'Z:/Bianca/????-??-??/??/*.log'
+    # LOG_PATTERN = 'Z:/PG558/????-??-??/??/*.log'
+    # LOG_PATTERN = 'D:/TestLogs/????-??-??/??/*.log'
     # LOG_PATTERN = 'C:/Users/kvh10/Downloads/OneDrive_1_2026-3-17/2026-03-16_23_FCT_logs/????-??-??/??/*.log'
     
     # 2. Set your desired date range
-    START_DATE = "2026-03-21" # "2026-01-21" # "2025-10-10"
-    END_DATE   = "2026-03-21" # "2026-02-01" # "2025-10-15"
+    START_DATE = "2026-05-15" # "2026-01-21" # "2025-10-10"
+    END_DATE   = "2026-05-15" #"2026-02-01" # "2025-10-15"
 
     # --- Run the function ---
     
@@ -332,13 +341,14 @@ def main():
         print("--- No .log files found matching the criteria. ---")
         return
 
-    csv_output_path = 'EC008_' + START_DATE + '_' + END_DATE + '_EC284.csv'
+    csv_output_path = '' + START_DATE + '_' + END_DATE + '.csv'
     all_data = []
 
     # Find all files ending with .log in the specified directory
     for file_path in final_file_list:
         if not check_filename(file_path):
-            print(f"\nNot FCT or NVL log file: '{file_path}'")
+            # print(f"\nNot FCT or NVL log file: '{file_path}'")
+            print(f"\nNot FAIL log file: '{file_path}'")
             continue
 
         if file_path.endswith(".log"):
